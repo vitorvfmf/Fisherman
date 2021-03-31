@@ -10,8 +10,8 @@ debugmode = parser.getboolean('Settings','debug')
 max_volume = parser.getint('Settings','Volume_Threshold')
 screen_area = parser.get('Settings','tracking_zone')
 detection_threshold = parser.getfloat('Settings','detection_threshold')
-dist_launch_time = parser.getfloat('Settings', 'Lauch_time')
-cast_time = parser.getint('Settings', 'Cast_time')
+dist_launch_time = parser.getfloat('Settings', 'launch_time')
+cast_time = parser.getint('Settings', 'cast_time')
 screen_area = screen_area.strip('(')
 screen_area = screen_area.strip(')')
 cordies = screen_area.split(',')
@@ -81,7 +81,7 @@ def cast_hook():
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
                 time.sleep(0.2)
                 pyautogui.mouseDown()
-                time.sleep(random.uniform(0.3,dist_launch_time))
+                time.sleep(random.uniform(dist_launch_time-0.2,dist_launch_time))
                 pyautogui.mouseUp()
                 log_info(f"Casted towards:{x,y}",logger="Information")
                 time.sleep(2.5)
@@ -91,7 +91,10 @@ def cast_hook():
                 if STATE == "CAST":
                     log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
                     STATE = "CASTING"
+                    time.sleep(0.15)
+                    pyautogui.mouseDown()
                     pyautogui.mouseUp()
+                    time.sleep(0.15)
                     cast_hook()
         else:
             break
@@ -248,7 +251,7 @@ def save_dist_launch_time(sender,data):
     log_info(f'Dist time launch Updated to :{dist_launch_time}',logger="Information")
 def save_cast_time(sender,data):
     global cast_time
-    cast_time = get_value("Set cast time")
+    cast_time = get_value("Set Cast Time")
     log_info(f'Cast time Updated to :{cast_time}',logger="Information")
 #Title Tracking
 def Setup_title():
@@ -268,8 +271,8 @@ def save_settings(sender,data):
     p.set('Settings', 'volume_threshold', str(max_volume))
     p.set('Settings','tracking_zone',str(screen_area))
     p.set('Settings','detection_threshold',str(detection_threshold))
-    p.set('Settings','Launch_time',str(dist_launch_time))
-    p.set('Settings','Cast_time',str(cast_time))
+    p.set('Settings','launch_time',str(dist_launch_time))
+    p.set('Settings','cast_time',str(cast_time))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -287,8 +290,9 @@ with window("Fisherman Window",width = 684,height = 460):
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
     add_input_float("Set Detection Threshold",min_value=0.1,max_value=2.5,default_value=detection_threshold,callback=save_threshold)
     #add_spacing(count = 3)
-    add_input_float("Set Launch Time",min_value=0.1,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
-    add_input_float("Set Cast Time",min_value=1,max_value=60,default_value=cast_time,callback=save_cast_time, tip = "time to determine how long without getting fish")
+    add_input_float("Set Time Lauch Distance",min_value=0.3,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
+    add_input_int("Set Cast Time",min_value=1,max_value=60,default_value=int(cast_time),callback= save_cast_time, tip = "time to determine how long without getting fish")
+    #add_label_text("Volume detected: "+ str(total))
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
@@ -300,11 +304,9 @@ with window("Fisherman Window",width = 684,height = 460):
     add_same_line()
     add_button("Save Settings",callback=save_settings,tip = "Saves bot settings to settings.ini")
     add_spacing(count = 5)
-    add_label_text("Volume detected: " + str(total))
-    add_spacing(count = 5)
 
     add_logger("Information",log_level=0)
-    log_info(f'Loaded Settings. Volume Threshold:{max_volume},Tracking Zone:{screen_area},Debug Mode:{debugmode}',logger="Information")
+    log_info(f'Loaded Settings. Volume Threshold:{max_volume},Tracking Zone:{screen_area},Launch Time: {dist_launch_time}, Cast Time: {cast_time},Debug Mode:{debugmode}',logger="Information")
 
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
