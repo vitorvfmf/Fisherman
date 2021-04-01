@@ -9,9 +9,11 @@ parser.read('settings.ini')
 debugmode = parser.getboolean('Settings','debug')
 max_volume = parser.getint('Settings','Volume_Threshold')
 screen_area = parser.get('Settings','tracking_zone')
+coord_bait = parser.get('Settings','bait_inventory')
 detection_threshold = parser.getfloat('Settings','detection_threshold')
 dist_launch_time = parser.getfloat('Settings', 'launch_time')
 cast_time = parser.getint('Settings', 'cast_time')
+food_time = parser.getint('Settings', 'food_time')
 screen_area = screen_area.strip('(')
 screen_area = screen_area.strip(')')
 cordies = screen_area.split(',')
@@ -21,6 +23,12 @@ screen_area = int(cordies[0]),int(cordies[1]),int(cordies[2]),int(cordies[3])
 #Coords for fishing spots
 coords = []
 
+#print(coord_bait)
+coord_bait = coord_bait.strip('(')
+coord_bait = coord_bait.strip(')')
+#(coord_bait)
+xy_bait = coord_bait.split(',')
+coord_bait = int(xy_bait[0]),int(xy_bait[1])
 #Sound Volume
 total = 0
 
@@ -38,7 +46,7 @@ state_right = win32api.GetKeyState(0x02)
 fish_count = 0
 
 bait_counter = 0
-
+food_bait = 0
 food_timer = 0
 
 ##########################################################
@@ -68,7 +76,6 @@ def check_volume():
 
 def get_new_spot():
     return random.choice(coords)
-
 #Runs the casting function
 def cast_hook():
     global STATE
@@ -92,9 +99,9 @@ def cast_hook():
                     log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
                     STATE = "CASTING"
                     time.sleep(0.15)
-                    pyautogui.mouseDown()
-                    pyautogui.mouseUp()
-                    time.sleep(0.15)
+                    #pyautogui.mouseDown()
+                    #pyautogui.mouseUp()
+                    #time.sleep(0.15)
                     cast_hook()
         else:
             break
@@ -127,7 +134,12 @@ def do_minigame():
                         break
         else:
             STATE = "CASTING"
-
+#use_food
+def use_food():
+    while True:
+        time.sleep(food_time*60)
+        pyautogui.press("2")
+        log_info(f"Food is used.",logger="Information")
 ##########################################################
 #
 #   These Functions are all Callbacks used by DearPyGui
@@ -155,7 +167,24 @@ def generate_coords(sender,data):
         temp.append(y)
         coords.append(temp)
         log_info(f'Position:{n} Saved. | {x,y}',logger="Information")
-
+#generate location bait inventory
+def bait_coords(sender,data):
+    global coord_bait,STATE,state_left
+    for n in range(1):
+        n = n+1
+        temp = []
+        log_info(f'[Bait:{n}]|Press Spacebar over the bait in inventory',logger="Information")
+        time.sleep(1)
+        while True:
+            a = win32api.GetKeyState(0x20)  
+            if a != state_left:
+                state_left = a 
+                if a < 0:
+                    break
+            time.sleep(0.001) 
+        x,y = pyautogui.position()
+        coord_bait = x,y
+        log_info(f'Updated bait inventory to {coord_bait}',logger="Information")
 #Sets tracking zone for image detection
 def Grab_Screen(sender,data):
     global screen_area
@@ -208,19 +237,37 @@ def start(data,sender):
     stop_button = False
     volume_manager = threading.Thread(target = check_volume)
     hook_manager = threading.Thread(target = cast_hook)
+    food_manager = threading.Thread(target = use_food)
     if stop_button == False:
         max_volume = get_value("Set Volume Threshold")
         if len(coords) == 0:
             log_info(f'Please Select Fishing Coords first',logger="Information")
             return
         else:
+            pyautogui.mouseUp()
+            x,y = get_new_spot()
+            pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
+            time.sleep(0.125)
+            pyautogui.mouseDown()
+            time.sleep(0.125)
+            pyautogui.mouseUp()
+            time.sleep(0.125)
+            pyautogui.press('1')
+            time.sleep(1)
+            pyautogui.press('2')
+            time.sleep(3)
+            food_manager.start()
+            log_info(f'Food Manager Started',logger="Information")
+            time.sleep(3)
             volume_manager.start()
             log_info(f'Volume Scanner Started',logger="Information")
             hook_manager.start()
             log_info(f'Hook Manager Started',logger="Information")
+
             log_info(f'Bot Started',logger="Information")
+
     STATE = "STARTED"
-    pyautogui.press("1")
+
 
 #Stops the bot and closes active threads
 def stop(data,sender):
@@ -253,15 +300,32 @@ def save_cast_time(sender,data):
     global cast_time
     cast_time = get_value("Set Cast Time")
     log_info(f'Cast time Updated to :{cast_time}',logger="Information")
+def save_food_time(sender,data):
+    global food_time
+    food_time = get_value("Set Food Time")
+    log_info(f'Food time Updated to :{food_time}',logger="Information")
 #Title Tracking
 def Setup_title():
     global bait_counter
+    global food_bait
     while 1:
         set_main_window_title(f"Fisherman | Status:{STATE} | Fish Hits:{fish_count} |Current Volume:{max_volume} \ {total} |")
-        time.sleep(0.1)
-        if bait_counter == 10:
+        time.sleep(0.05)
+        if bait_counter >= 10:
             bait_counter = 0
-            pyautogui.press("1")
+            food_bait += 1
+            log_info(f"Using Bait!. Proximaly reload: {10-food_bait}", Logger = "Information")
+            pyautogui.press('1')
+            if food_bait == 10:
+                x = int(coord_bait[0])
+                y = int(coord_bait[1])
+                pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
+                time.sleep(0.3)
+                log_info(f"Reloading bait...", Logger = "Information")
+                pyautogui.click(button='right', interval=0.25)
+                time.sleep(0.3)
+                food_bait =0
+            
 
 #Saves settings to settings.ini
 def save_settings(sender,data):
@@ -270,14 +334,16 @@ def save_settings(sender,data):
     p.read_file(fp)
     p.set('Settings', 'volume_threshold', str(max_volume))
     p.set('Settings','tracking_zone',str(screen_area))
+    p.set('Settings', 'bait_inventory', str(coord_bait))
     p.set('Settings','detection_threshold',str(detection_threshold))
     p.set('Settings','launch_time',str(dist_launch_time))
     p.set('Settings','cast_time',str(cast_time))
+    p.set('Settings','food_time',str(food_time))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
 #Settings for DearPyGui window
-set_main_window_size(700,500)
+set_main_window_size(550,500)
 set_style_window_menu_button_position(0)
 set_theme("Gold")
 set_global_font_scale(1)
@@ -290,17 +356,19 @@ with window("Fisherman Window",width = 684,height = 460):
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
     add_input_float("Set Detection Threshold",min_value=0.1,max_value=2.5,default_value=detection_threshold,callback=save_threshold)
     #add_spacing(count = 3)
-    add_input_float("Set Time Lauch Distance",min_value=0.3,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
-    add_input_int("Set Cast Time",min_value=1,max_value=60,default_value=int(cast_time),callback= save_cast_time, tip = "time to determine how long without getting fish")
-    #add_label_text("Volume detected: "+ str(total))
+    add_slider_float("Set Time Lauch Distance",min_value=0.3,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
+    add_slider_int("Set Cast Time",min_value=1,max_value=60,default_value=int(cast_time),callback= save_cast_time, tip = "time to determine how long without getting fish")
+    add_slider_int("Set Food Time",min_value=1,max_value=60,default_value=int(food_time),callback= save_food_time, tip = "time to use food. Is minutes")
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
     add_button("Set Tracking Zone",callback=Grab_Screen,tip="Sets zone bot tracks for solving fishing minigame")
-    add_spacing(count = 5)
-    add_button("Start Bot",callback=start,tip = "Starts the bot")
     add_same_line()
-    add_button("Stop Bot",callback = stop,tip = "Stops the bot")
+    add_button("Set Bait Inventory",callback=bait_coords,tip="Sets zone bot bait inventory")
+    add_spacing(count = 5)
+    add_button("Start Bot",callback=start,tip = "Starts the bot. Or press f1")
+    add_same_line()
+    add_button("Stop Bot",callback = stop,tip = "Stops the bot. Or press f2")
     add_same_line()
     add_button("Save Settings",callback=save_settings,tip = "Saves bot settings to settings.ini")
     add_spacing(count = 5)
