@@ -309,19 +309,20 @@ def Setup_title():
     global bait_counter
     global food_bait
     while 1:
-        set_main_window_title(f"Fisherman | Status:{STATE} | Fish Hits:{fish_count} |Current Volume:{max_volume} \ {total} |")
+        set_main_window_title(f"Fisherman | Status:{STATE} | Fish Hits:{fish_count} |Current Volume: {total} / {max_volume}  |")
         time.sleep(0.05)
         if bait_counter >= 10:
             bait_counter = 0
             food_bait += 1
-            log_info(f"Using Bait!. Proximaly reload: {10-food_bait}", Logger = "Information")
+            cal_bait = 10 - food_bait
+            log_info(f'Using Bait!. Proximaly reload: {cal_bait}', logger="Information")
             pyautogui.press('1')
             if food_bait == 10:
                 x = int(coord_bait[0])
                 y = int(coord_bait[1])
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
                 time.sleep(0.3)
-                log_info(f"Reloading bait...", Logger = "Information")
+                log_info(f'Reloading bait...', logger = "Information")
                 pyautogui.click(button='right', interval=0.25)
                 time.sleep(0.3)
                 food_bait =0
