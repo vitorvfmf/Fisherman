@@ -1,7 +1,8 @@
+from typing import Set
 import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools,cv2,numpy
 from dearpygui.core import *
 from dearpygui.simple import *
-import random
+import random,os
 
 #Loads Settings
 parser = configparser.ConfigParser()
@@ -326,7 +327,27 @@ def Setup_title():
                 pyautogui.click(button='right', interval=0.25)
                 time.sleep(0.3)
                 food_bait =0
-            
+
+def Setup():
+    if os.path.exists('first_run.txt'):
+        return
+    else:
+        print("Detected first run...\nChecking Files.")
+        if os.path.exists('bobber.png'):
+            print('\U0001f44d' + ' Found bobber.png')
+        else:
+            print('ERROR | No bobber.png found. Please obtain the bobber.png and restart.')
+            exit('bobber error')
+        if os.path.exists('settings.ini'):
+            print('\U0001f44d' + ' Found settings.ini')
+        else:
+            print('ERROR | No settings.ini found. Please obtain the settings file and restart.')
+            exit('settings error')
+        f = open('first_run.txt','w')
+        f.write('ran = true')
+        f.close()
+
+
 
 #Saves settings to settings.ini
 def save_settings(sender,data):
@@ -377,5 +398,6 @@ with window("Fisherman Window",width = 684,height = 460):
     add_logger("Information",log_level=0)
     log_info(f'Loaded Settings. Volume Threshold:{max_volume},Tracking Zone:{screen_area},Launch Time: {dist_launch_time}, Cast Time: {cast_time},Debug Mode:{debugmode}',logger="Information")
 
+Setup()
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
