@@ -365,7 +365,7 @@ def save_settings(sender,data):
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
 #Settings for DearPyGui window
-set_main_window_size(550,500)
+set_main_window_size(700,500)
 set_style_window_menu_button_position(0)
 set_theme("Gold")
 set_global_font_scale(1)
