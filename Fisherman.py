@@ -1,3 +1,4 @@
+import sys
 from typing import Set
 import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools,cv2,numpy
 from dearpygui.core import *
@@ -6,8 +7,13 @@ import random,os
 
 #Loads Settings
 parser = configparser.ConfigParser()
-parser.read('settings.ini')
+try:
+    parser.read('settings.ini')
+except :
+    print("not exist!")
+
 debugmode = parser.getboolean('Settings','debug')
+resolution = parser.getint('Settings', 'game_resolution')
 max_volume = parser.getint('Settings','Volume_Threshold')
 screen_area = parser.get('Settings','tracking_zone')
 coord_bait = parser.get('Settings','bait_inventory')
@@ -21,6 +27,8 @@ cordies = screen_area.split(',')
 screen_area = int(cordies[0]),int(cordies[1]),int(cordies[2]),int(cordies[3])
 
 #screen_area = x1,y1,x2,y2
+#resolution game
+resolutions = ["1024x768", "1080x720", "1600x1024"]
 #Coords for fishing spots
 coords = []
 
@@ -97,12 +105,13 @@ def cast_hook():
             elif STATE == "CAST":
                 time.sleep(cast_time)
                 if STATE == "CAST":
-                    log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
-                    STATE = "CASTING"
+                    log_warning(f"Seems to be stuck on cast. Recasting",logger="Information")
                     time.sleep(0.15)
-                    #pyautogui.mouseDown()
-                    #pyautogui.mouseUp()
-                    #time.sleep(0.15)
+                    pyautogui.mouseDown()
+                    time.sleep(0.05)
+                    pyautogui.mouseUp()
+                    time.sleep(0.15)
+                    STATE = "CASTING"
                     cast_hook()
         else:
             break
@@ -112,7 +121,7 @@ def do_minigame():
     global STATE,fish_count,bait_counter
     if STATE != "CASTING" and STATE != "STARTED":
         STATE = "SOLVING"
-        log_info(f'Attempting Minigame',logger="Information")
+        log_debug(f'Attempting Minigame',logger="Information")
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         #Initial scan. Waits for bobber to appear
@@ -210,13 +219,26 @@ def Grab_Screen(sender,data):
     log_info(f'Updated tracking area to {screen_area}',logger="Information")
 
 #Detects bobber in tracking zone using openCV
+def change_bober(val):
+    if val == 0:
+        return cv2.imread('bobber-1024-768.png')
+    elif val == 1:
+        return cv2.imread('bobber-1280x720.png')
+    elif val == 2:
+        return cv2.imread('bobber-1600x1024.png')
+    else:
+        log_info(f'Please Select Game Resolution',logger="Information")
+        return cv2.imread('bobber.png')
+        
+        
+
 def Detect_Bobber():
     start_time = time.time()
     with mss.mss() as sct:
         base = numpy.array(sct.grab(screen_area))
         base = numpy.flip(base[:, :, :3], 2)  # 1
         base = cv2.cvtColor(base, cv2.COLOR_RGB2BGR)
-        bobber = cv2.imread('bobber.png')
+        bobber = change_bober(resolution)        
         bobber = numpy.array(bobber, dtype=numpy.uint8)
         bobber = numpy.flip(bobber[:, :, :3], 2)  # 1
         bobber = cv2.cvtColor(bobber, cv2.COLOR_RGB2BGR)
@@ -230,15 +252,14 @@ def Detect_Bobber():
             print(f"Bobber not found. Match certainty:{max_val}")
             print("%s seconds to calculate" % (time.time() - start_time))
             return ["FALSE",max_loc,base.shape[1]]
-
 #Starts the bots threads
 def start(data,sender):
     global max_volume,stop_button,STATE
     STATE = "STARTING"
     stop_button = False
-    volume_manager = threading.Thread(target = check_volume)
-    hook_manager = threading.Thread(target = cast_hook)
-    food_manager = threading.Thread(target = use_food)
+    volume_manager = threading.Thread(target = check_volume, name= "VOLUME CHECK MANAGE")
+    hook_manager = threading.Thread(target = cast_hook, name = "CAST HOOK MANAGE")
+    food_manager = threading.Thread(target = use_food, name = "FOOD MANAGER")
     if stop_button == False:
         max_volume = get_value("Set Volume Threshold")
         if len(coords) == 0:
@@ -264,10 +285,10 @@ def start(data,sender):
             log_info(f'Volume Scanner Started',logger="Information")
             hook_manager.start()
             log_info(f'Hook Manager Started',logger="Information")
-
             log_info(f'Bot Started',logger="Information")
-
-    STATE = "STARTED"
+        STATE = "STARTED"
+    else:
+        log_error(f'Invalid KEY',logger="Information")
 
 
 #Stops the bot and closes active threads
@@ -305,6 +326,13 @@ def save_food_time(sender,data):
     global food_time
     food_time = get_value("Set Food Time")
     log_info(f'Food time Updated to :{food_time}',logger="Information")
+def save_resolution(sender,data):
+    global resolution
+    resolution = get_value("Set Game Resolution")
+    log_info(f'Resolution Game Updated to :{resolutions[resolution]}',logger="Information")
+def callback_password(sender,data):
+    global password
+    password = get_value("KEY USE")
 #Title Tracking
 def Setup_title():
     global bait_counter
@@ -354,6 +382,7 @@ def save_settings(sender,data):
     fp = open('settings.ini')
     p = configparser.ConfigParser()
     p.read_file(fp)
+    p.set('Settings', 'game_resolution', str(resolution))
     p.set('Settings', 'volume_threshold', str(max_volume))
     p.set('Settings','tracking_zone',str(screen_area))
     p.set('Settings', 'bait_inventory', str(coord_bait))
@@ -372,7 +401,7 @@ set_global_font_scale(1)
 set_main_window_resizable(False)
 
 #Creates the DearPyGui Window
-with window("Fisherman Window",width = 684,height = 460):
+with window("Fisherman Window",width = 550,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
@@ -381,6 +410,7 @@ with window("Fisherman Window",width = 684,height = 460):
     add_slider_float("Set Time Lauch Distance",min_value=0.3,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
     add_slider_int("Set Cast Time",min_value=1,max_value=60,default_value=int(cast_time),callback= save_cast_time, tip = "time to determine how long without getting fish")
     add_slider_int("Set Food Time",min_value=1,max_value=60,default_value=int(food_time),callback= save_food_time, tip = "time to use food. Is minutes")
+    add_listbox("Set Game Resolution", items=resolutions, default_value=int(resolution),callback=save_resolution)
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
