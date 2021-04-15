@@ -1,6 +1,10 @@
 # Fisherman
 An Albion online fishing bot
 
+
+**Note: This Project has reached End Of Life. Development has started on a complete rewrite called Fisherman Rewritten. You can track progress in the discord.**
+
+
 Discord Server for support and help with this bot!
 
 https://discord.gg/J3YhZEUm5E
