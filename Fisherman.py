@@ -25,7 +25,8 @@ screen_area = screen_area.strip('(')
 screen_area = screen_area.strip(')')
 cordies = screen_area.split(',')
 screen_area = int(cordies[0]),int(cordies[1]),int(cordies[2]),int(cordies[3])
-
+bobber_img = ('bobber-1024-768.png', 'bobber-1280x720.png', 'bobber-1600x1024.png')
+#print(bobber_img[0])
 #screen_area = x1,y1,x2,y2
 #resolution game
 resolutions = ["1024x768", "1080x720", "1600x1024"]
@@ -87,7 +88,7 @@ def get_new_spot():
     return random.choice(coords)
 #Runs the casting function
 def cast_hook():
-    global STATE
+    global STATE, stop_button
     while 1:
         if stop_button == False:
             if STATE == "CASTING" or STATE == "STARTED":
@@ -95,22 +96,19 @@ def cast_hook():
                 pyautogui.mouseUp()
                 x,y = get_new_spot()
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
-                time.sleep(0.2)
+                time.sleep(0.7)
+                log_info(f"Casted towards:{x,y}",logger="Information")
                 pyautogui.mouseDown()
                 time.sleep(random.uniform(dist_launch_time-0.2,dist_launch_time))
                 pyautogui.mouseUp()
-                log_info(f"Casted towards:{x,y}",logger="Information")
                 time.sleep(2.5)
                 STATE = "CAST"
             elif STATE == "CAST":
                 time.sleep(cast_time)
                 if STATE == "CAST":
                     log_warning(f"Seems to be stuck on cast. Recasting",logger="Information")
-                    time.sleep(0.15)
-                    pyautogui.mouseDown()
-                    time.sleep(0.05)
-                    pyautogui.mouseUp()
-                    time.sleep(0.15)
+                    pyautogui.click(clicks= 2, interval=0.15)
+                    time.sleep(0.25)
                     STATE = "CASTING"
                     cast_hook()
         else:
@@ -125,7 +123,7 @@ def do_minigame():
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         #Initial scan. Waits for bobber to appear
-        time.sleep(0.2)
+        time.sleep(0.25)
         valid,location,size = Detect_Bobber()
         if valid == "TRUE":
             fish_count += 1
@@ -146,10 +144,14 @@ def do_minigame():
             STATE = "CASTING"
 #use_food
 def use_food():
+    global stop_button
     while True:
-        time.sleep(food_time*60)
-        pyautogui.press("2")
-        log_info(f"Food is used.",logger="Information")
+        if stop_button == False:
+            time.sleep(food_time*60)
+            pyautogui.press("2")
+            log_info(f"Food is used.",logger="Information")
+        else:
+            break
 ##########################################################
 #
 #   These Functions are all Callbacks used by DearPyGui
@@ -221,18 +223,20 @@ def Grab_Screen(sender,data):
 #Detects bobber in tracking zone using openCV
 def change_bober(val):
     if val == 0:
-        return cv2.imread('bobber-1024-768.png')
+        return cv2.imread(bobber_img[0])
     elif val == 1:
-        return cv2.imread('bobber-1280x720.png')
+        return cv2.imread(bobber_img[1])
     elif val == 2:
-        return cv2.imread('bobber-1600x1024.png')
+        return cv2.imread(bobber_img[2])
     else:
         log_info(f'Please Select Game Resolution',logger="Information")
         return cv2.imread('bobber.png')
+    
         
         
 
 def Detect_Bobber():
+    global detection_threshold
     start_time = time.time()
     with mss.mss() as sct:
         base = numpy.array(sct.grab(screen_area))
@@ -244,14 +248,16 @@ def Detect_Bobber():
         bobber = cv2.cvtColor(bobber, cv2.COLOR_RGB2BGR)
         result = cv2.matchTemplate(base,bobber,cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        if max_val > 0.5:
-            print(f"Bobber Found!. Match certainty:{max_val}")
-            print("%s seconds to calculate" % (time.time() - start_time))
+        #if max_val > 0.5:
+        if max_val > detection_threshold:
+            print(f"Bobber Found!. certainty:{round(max_val,4)}")
+            print("%s s to calculate" % (round(time.time() - start_time,4)))
             return ["TRUE",max_loc,base.shape[1]]
         else:
-            print(f"Bobber not found. Match certainty:{max_val}")
-            print("%s seconds to calculate" % (time.time() - start_time))
+            print(f"Bobber not found. certainty:{round(max_val,4)}")
+            print("%s s to calculate" % (round(time.time() - start_time, 4)))
             return ["FALSE",max_loc,base.shape[1]]
+
 #Starts the bots threads
 def start(data,sender):
     global max_volume,stop_button,STATE
@@ -269,18 +275,18 @@ def start(data,sender):
             pyautogui.mouseUp()
             x,y = get_new_spot()
             pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
-            time.sleep(0.125)
+            time.sleep(0.25)
             pyautogui.mouseDown()
-            time.sleep(0.125)
+            time.sleep(0.15)
             pyautogui.mouseUp()
-            time.sleep(0.125)
+            time.sleep(0.15)
             pyautogui.press('1')
-            time.sleep(1)
+            time.sleep(0.8)
             pyautogui.press('2')
-            time.sleep(3)
+            time.sleep(2.2)
             food_manager.start()
             log_info(f'Food Manager Started',logger="Information")
-            time.sleep(3)
+            time.sleep(0.2)
             volume_manager.start()
             log_info(f'Volume Scanner Started',logger="Information")
             hook_manager.start()
@@ -300,7 +306,8 @@ def stop(data,sender):
     log_info(f'Stopping Volume Scanner',logger="Information")
     pyautogui.mouseUp()
     STATE = "STOPPED"
-    log_info(f'Stopped Bot',logger="Information")
+    coords.clear()
+    log_info(f'Stopped Bot. Please re-spot!',logger="Information")
 
 #Updates Bot Volume
 def save_volume(sender,data):
@@ -326,13 +333,12 @@ def save_food_time(sender,data):
     global food_time
     food_time = get_value("Set Food Time")
     log_info(f'Food time Updated to :{food_time}',logger="Information")
+# save modify resolution bobber
 def save_resolution(sender,data):
     global resolution
     resolution = get_value("Set Game Resolution")
     log_info(f'Resolution Game Updated to :{resolutions[resolution]}',logger="Information")
-def callback_password(sender,data):
-    global password
-    password = get_value("KEY USE")
+
 #Title Tracking
 def Setup_title():
     global bait_counter
@@ -347,6 +353,7 @@ def Setup_title():
             log_info(f'Using Bait!. Proximaly reload: {cal_bait}', logger="Information")
             pyautogui.press('1')
             if food_bait == 10:
+                pyautogui.press('i')
                 x = int(coord_bait[0])
                 y = int(coord_bait[1])
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
@@ -354,18 +361,25 @@ def Setup_title():
                 log_info(f'Reloading bait...', logger = "Information")
                 pyautogui.click(button='right', interval=0.25)
                 time.sleep(0.3)
+                pyautogui.press('i')
                 food_bait =0
 
 def Setup():
     if os.path.exists('first_run.txt'):
         return
     else:
-        print("Detected first run...\nChecking Files.")
+        print("Detected first run...\nChecking Files.")        
         if os.path.exists('bobber.png'):
             print('\U0001f44d' + ' Found bobber.png')
         else:
             print('ERROR | No bobber.png found. Please obtain the bobber.png and restart.')
             exit('bobber error')
+        for i in bobber_img:
+            if os.path.exists(i):
+                print('\U0001f44d' + str(i))
+            else:
+                print('ERROR | No '+str(i) + ' found. Please obtain the bobber.png and restart.')
+                exit('bobber error')
         if os.path.exists('settings.ini'):
             print('\U0001f44d' + ' Found settings.ini')
         else:
@@ -394,14 +408,14 @@ def save_settings(sender,data):
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
 #Settings for DearPyGui window
-set_main_window_size(700,500)
+set_main_window_size(600,500)
 set_style_window_menu_button_position(0)
 set_theme("Gold")
 set_global_font_scale(1)
 set_main_window_resizable(False)
 
 #Creates the DearPyGui Window
-with window("Fisherman Window",width = 550,height = 460):
+with window("Fisherman Window",width = 600,height = 500):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
