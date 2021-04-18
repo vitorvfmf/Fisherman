@@ -88,7 +88,7 @@ def get_new_spot():
     return random.choice(coords)
 #Runs the casting function
 def cast_hook():
-    global STATE
+    global STATE, stop_button
     while 1:
         if stop_button == False:
             if STATE == "CASTING" or STATE == "STARTED":
@@ -96,18 +96,18 @@ def cast_hook():
                 pyautogui.mouseUp()
                 x,y = get_new_spot()
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
-                time.sleep(0.2)
+                time.sleep(0.7)
+                log_info(f"Casted towards:{x,y}",logger="Information")
                 pyautogui.mouseDown()
                 time.sleep(random.uniform(dist_launch_time-0.2,dist_launch_time))
                 pyautogui.mouseUp()
-                log_info(f"Casted towards:{x,y}",logger="Information")
                 time.sleep(2.5)
                 STATE = "CAST"
             elif STATE == "CAST":
                 time.sleep(cast_time)
                 if STATE == "CAST":
                     log_warning(f"Seems to be stuck on cast. Recasting",logger="Information")
-                    pyautogui.click(clicks= 2, interval=0.20)
+                    pyautogui.click(clicks= 2, interval=0.15)
                     time.sleep(0.25)
                     STATE = "CASTING"
                     cast_hook()
@@ -123,7 +123,7 @@ def do_minigame():
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         #Initial scan. Waits for bobber to appear
-        time.sleep(0.2)
+        time.sleep(0.25)
         valid,location,size = Detect_Bobber()
         if valid == "TRUE":
             fish_count += 1
@@ -144,10 +144,14 @@ def do_minigame():
             STATE = "CASTING"
 #use_food
 def use_food():
+    global stop_button
     while True:
-        time.sleep(food_time*60)
-        pyautogui.press("2")
-        log_info(f"Food is used.",logger="Information")
+        if stop_button == False:
+            time.sleep(food_time*60)
+            pyautogui.press("2")
+            log_info(f"Food is used.",logger="Information")
+        else:
+            break
 ##########################################################
 #
 #   These Functions are all Callbacks used by DearPyGui
@@ -246,12 +250,12 @@ def Detect_Bobber():
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         #if max_val > 0.5:
         if max_val > detection_threshold:
-            print(f"Bobber Found!. certainty:{max_val}")
-            print("%s s to calculate" % (time.time() - start_time))
+            print(f"Bobber Found!. certainty:{round(max_val,4)}")
+            print("%s s to calculate" % (round(time.time() - start_time,4)))
             return ["TRUE",max_loc,base.shape[1]]
         else:
-            print(f"Bobber not found. certainty:{max_val}")
-            print("%s s to calculate" % (time.time() - start_time))
+            print(f"Bobber not found. certainty:{round(max_val,4)}")
+            print("%s s to calculate" % (round(time.time() - start_time, 4)))
             return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads

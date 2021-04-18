@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.venvPath": "${workspaceFolder}/Scripts/",
+		"python.envFile": "${workspaceFolder}/Scripts/python.exe",
+		"python.analysis.autoImportCompletions": true,
+		"python.analysis.autoSearchPaths": true,
+		"python.terminal.activateEnvironment": true
+		
+	}
+}
