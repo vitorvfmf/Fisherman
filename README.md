@@ -2,12 +2,12 @@
 An Albion online fishing bot
 
 
-**Note: This Project has reached End Of Life. Development has started on a complete rewrite called Fisherman Rewritten. You can track progress in the discord.**
+**Note: This Project has Reached End Of Life. The Rewritten version was halted but is now back under development once again. A new discord has been created.**
 
 
-Discord Server for support and help with this bot!
+Discord Server for new project (Note: No support for this version of Fisherman will be given in that server.)
 
-https://discord.gg/J3YhZEUm5E
+https://discord.gg/ZPNgXcfMpk
 
 
 Fisherman is a free open source fishing bot written in python.
