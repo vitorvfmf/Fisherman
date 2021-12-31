@@ -3,7 +3,7 @@ from typing import Set
 import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools,cv2,numpy
 from dearpygui.core import *
 from dearpygui.simple import *
-import random,os
+import random,os,time
 
 #Loads Settings
 parser = configparser.ConfigParser()
@@ -21,6 +21,7 @@ detection_threshold = parser.getfloat('Settings','detection_threshold')
 dist_launch_time = parser.getfloat('Settings', 'launch_time')
 cast_time = parser.getint('Settings', 'cast_time')
 food_time = parser.getint('Settings', 'food_time')
+max_catch_time = parser.getint('Settings', 'max_catch_time')
 screen_area = screen_area.strip('(')
 screen_area = screen_area.strip(')')
 cordies = screen_area.split(',')
@@ -128,10 +129,14 @@ def do_minigame():
         if valid == "TRUE":
             fish_count += 1
             bait_counter += 1
+            t0 = time.time()
             while 1:
                 valid,location,size = Detect_Bobber()
+                t1 = time.time() - t0
                 if valid == "TRUE":
-                    if location[0] < size / 2:
+                    if t1 > max_catch_time:
+                        pyautogui.mouseUp()
+                    elif location[0] < size / 2:
                         pyautogui.mouseDown()
                     else:
                         pyautogui.mouseUp()
@@ -333,6 +338,10 @@ def save_food_time(sender,data):
     global food_time
     food_time = get_value("Set Food Time")
     log_info(f'Food time Updated to :{food_time}',logger="Information")
+def save_max_catch_time(sender,data):
+    global max_catch_time
+    max_catch_time = get_value("Set Max Catch Time")
+    log_info(f'Max Catch time Updated to :{max_catch_time}',logger="Information")
 # save modify resolution bobber
 def save_resolution(sender,data):
     global resolution
@@ -404,6 +413,7 @@ def save_settings(sender,data):
     p.set('Settings','launch_time',str(dist_launch_time))
     p.set('Settings','cast_time',str(cast_time))
     p.set('Settings','food_time',str(food_time))
+    p.set('Settings','max_catch_time',str(max_catch_time))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -424,6 +434,7 @@ with window("Fisherman Window",width = 600,height = 500):
     add_slider_float("Set Time Lauch Distance",min_value=0.3,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
     add_slider_int("Set Cast Time",min_value=1,max_value=60,default_value=int(cast_time),callback= save_cast_time, tip = "time to determine how long without getting fish")
     add_slider_int("Set Food Time",min_value=1,max_value=60,default_value=int(food_time),callback= save_food_time, tip = "time to use food. Is minutes")
+    add_slider_int("Set Max Catch Time",min_value=1,max_value=60,default_value=int(max_catch_time),callback= save_max_catch_time, tip = "Maxmimum time before releasing the rod. Useful if fish can't be caught.")
     add_listbox("Set Game Resolution", items=resolutions, default_value=int(resolution),callback=save_resolution)
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
