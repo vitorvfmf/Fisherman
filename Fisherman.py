@@ -1,8 +1,8 @@
 import sys
 from typing import Set
 import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools,cv2,numpy
-from dearpygui.core import *
-from dearpygui.simple import *
+#from dearpygui.core import *
+#from dearpygui.simple import *
 import random,os,time
 
 #Loads Settings
